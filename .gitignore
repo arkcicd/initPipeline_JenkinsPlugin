@@ -1,0 +1,6 @@
+*.swp
+.vscode
+.settings
+.classpath
+.factorypath
+.project

@@ -1,0 +1,7 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+Init Pipeline Jenkins Plugin,org.jenkinsci.plugins.initpipeline,InitPipeline.new HttpResponse() {...},52,0,4,0,11,0,4,0,2,0
+Init Pipeline Jenkins Plugin,org.jenkinsci.plugins.initpipeline,InitPipeline.CommitHookCause,16,0,0,0,4,0,2,0,2,0
+Init Pipeline Jenkins Plugin,org.jenkinsci.plugins.initpipeline,InitPipeline.ScheduledResponseContributor,26,0,0,0,7,0,3,0,3,0
+Init Pipeline Jenkins Plugin,org.jenkinsci.plugins.initpipeline,InitPipeline.PollingScheduledResponseContributor,26,0,0,0,7,0,3,0,3,0
+Init Pipeline Jenkins Plugin,org.jenkinsci.plugins.initpipeline,InitPipeline.MessageResponseContributor,11,0,0,0,5,0,2,0,2,0
+Init Pipeline Jenkins Plugin,org.jenkinsci.plugins.initpipeline,InitPipeline,1066,39,124,0,208,14,70,6,8,6

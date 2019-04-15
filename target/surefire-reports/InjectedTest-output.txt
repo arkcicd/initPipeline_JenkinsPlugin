@@ -1,0 +1,64 @@
+Picking up existing exploded jenkins.war at /Users/DougMunsinger/Google Drive/arkCICD/arkCICD_GM/InitPipeline_Jenkins_Plugin/target/jenkins-for-test
+Apr 15, 2019 2:06:16 PM org.mortbay.log.Slf4jLog info
+INFO: Logging to org.slf4j.impl.JDK14LoggerAdapter(org.mortbay.log) via org.mortbay.log.Slf4jLog
+Apr 15, 2019 2:06:16 PM org.mortbay.log.Slf4jLog info
+INFO: jetty-6.1.26
+Apr 15, 2019 2:06:16 PM org.mortbay.log.Slf4jLog info
+INFO: NO JSP Support for , did not find org.apache.jasper.servlet.JspServlet
+Apr 15, 2019 2:06:16 PM org.mortbay.log.Slf4jLog info
+INFO: Started SocketConnector@0.0.0.0:51527
+Apr 15, 2019 2:06:17 PM jenkins.InitReactorRunner$1 onAttained
+INFO: Started initialization
+Apr 15, 2019 2:06:34 PM jenkins.InitReactorRunner$1 onAttained
+INFO: Listed all plugins
+Apr 15, 2019 2:06:34 PM jenkins.InitReactorRunner$1 onAttained
+INFO: Prepared all plugins
+Apr 15, 2019 2:06:34 PM jenkins.InitReactorRunner$1 onAttained
+INFO: Started all plugins
+Apr 15, 2019 2:06:34 PM jenkins.InitReactorRunner$1 onAttained
+INFO: Augmented all extensions
+Apr 15, 2019 2:06:37 PM jenkins.InitReactorRunner$1 onAttained
+INFO: Loaded all jobs
+Apr 15, 2019 2:06:37 PM org.jenkinsci.main.modules.sshd.SSHD start
+INFO: Started SSHD at port 51531
+Apr 15, 2019 2:06:37 PM jenkins.InitReactorRunner$1 onAttained
+INFO: Completed initialization
+Apr 15, 2019 2:06:37 PM hudson.UDPBroadcastThread run
+WARNING: UDP handling problem
+java.net.SocketException: Can't assign requested address
+	at java.net.PlainDatagramSocketImpl.join(Native Method)
+	at java.net.AbstractPlainDatagramSocketImpl.join(AbstractPlainDatagramSocketImpl.java:178)
+	at java.net.MulticastSocket.joinGroup(MulticastSocket.java:323)
+	at hudson.UDPBroadcastThread.run(UDPBroadcastThread.java:77)
+
+Apr 15, 2019 2:06:37 PM org.mortbay.log.Slf4jLog info
+INFO: jetty-6.1.26
+Apr 15, 2019 2:06:37 PM org.mortbay.log.Slf4jLog info
+INFO: Started SocketConnector@0.0.0.0:51533
+Apr 15, 2019 2:06:39 PM org.mortbay.log.Slf4jLog info
+INFO: Stopped SocketConnector@0.0.0.0:51527
+Apr 15, 2019 2:06:39 PM hudson.TcpSlaveAgentListener shutdown
+WARNING: Failed to close down TCP port
+java.io.IOException: No such file or directory
+	at sun.nio.ch.NativeThread.signal(Native Method)
+	at sun.nio.ch.ServerSocketChannelImpl.implCloseSelectableChannel(ServerSocketChannelImpl.java:292)
+	at java.nio.channels.spi.AbstractSelectableChannel.implCloseChannel(AbstractSelectableChannel.java:234)
+	at java.nio.channels.spi.AbstractInterruptibleChannel.close(AbstractInterruptibleChannel.java:115)
+	at hudson.TcpSlaveAgentListener.shutdown(TcpSlaveAgentListener.java:119)
+	at jenkins.model.Jenkins.cleanUp(Jenkins.java:2820)
+	at org.jvnet.hudson.test.HudsonTestCase.tearDown(HudsonTestCase.java:415)
+	at org.jvnet.hudson.test.JellyTestSuiteBuilder$JellyTestSuite.tearDown(JellyTestSuiteBuilder.java:148)
+	at org.jvnet.hudson.test.junit.GroupedTest.run(GroupedTest.java:53)
+	at junit.framework.TestSuite.runTest(TestSuite.java:255)
+	at junit.framework.TestSuite.run(TestSuite.java:250)
+	at org.junit.internal.runners.JUnit38ClassRunner.run(JUnit38ClassRunner.java:84)
+	at org.apache.maven.surefire.junit4.JUnit4Provider.execute(JUnit4Provider.java:283)
+	at org.apache.maven.surefire.junit4.JUnit4Provider.executeWithRerun(JUnit4Provider.java:173)
+	at org.apache.maven.surefire.junit4.JUnit4Provider.executeTestSet(JUnit4Provider.java:153)
+	at org.apache.maven.surefire.junit4.JUnit4Provider.invoke(JUnit4Provider.java:128)
+	at org.apache.maven.surefire.booter.ForkedBooter.invokeProviderInSameClassLoader(ForkedBooter.java:203)
+	at org.apache.maven.surefire.booter.ForkedBooter.runSuitesInProcess(ForkedBooter.java:155)
+	at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:103)
+
+WARN: The method class org.apache.commons.logging.impl.SLF4JLogFactory#release() was invoked.
+WARN: Please see http://www.slf4j.org/codes.html#release for an explanation.

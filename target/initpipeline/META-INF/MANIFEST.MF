@@ -1,0 +1,25 @@
+Manifest-Version: 1.0
+Built-By: DougMunsinger
+Created-By: Apache Maven
+Build-Jdk: 1.8.0_202
+Extension-Name: initpipeline
+Specification-Title: Requires the Git Plugin.
+     This plugin listens alongside the Git Plugin.
+     In cases where Jenkins does NOT have the pipeline referenced by t
+ he notifyCommit
+     configured, InitPipeline calls an external golang binary to 
+     instantiate and build the pipeline.  The plugin only acts in the 
+ case where the job doesn't already exist
+Implementation-Title: initpipeline
+Implementation-Version: 0.1.0.002
+Group-Id: org.jenkins-ci.plugins
+Short-Name: initpipeline
+Long-Name: Init Pipeline Jenkins Plugin
+Url: https://bitbucket.org/xosdigital/init_pipeline_jenkins_plugin/src
+ /master/
+Plugin-Version: 0.1.0.002
+Hudson-Version: 1.625.3
+Jenkins-Version: 1.625.3
+Plugin-Dependencies: git:2.4.4
+Plugin-Developers: 
+

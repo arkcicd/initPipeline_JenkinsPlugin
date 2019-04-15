@@ -1,0 +1,653 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>InitPipeline.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Init Pipeline Jenkins Plugin</a> &gt; <a href="index.source.html" class="el_package">org.jenkinsci.plugins.initpipeline</a> &gt; <span class="el_source">InitPipeline.java</span></div><h1>InitPipeline.java</h1><pre class="source lang-java linenums">package org.jenkinsci.plugins.initpipeline;
+
+/**
+ * initPipeline developed to extend git-plugin and handle the notifyCommit?url=URL commithook
+ * when the repo string passed is NOT known in Jenkins jobs and doesn't match any existing job
+ * This plugin catches the same /git/notifyCommit?url=URL commithook as git-plugin by
+ * extending the Listener in hudson.plugins.git.GitStatus.Listener, running parallel coding and
+ * then catching and handling the case of unknown repos and creating the job in Jenkins
+ * This done by calling out to an external executable to
+ * configure and instantiate a pipeline build and then kick it off for a first run
+ */
+
+import hudson.Extension;
+import hudson.Util;
+import hudson.model.*;
+import hudson.plugins.git.BranchSpec;
+import hudson.plugins.git.GitSCM;
+import hudson.plugins.git.extensions.impl.IgnoreNotifyCommit;
+import hudson.scm.SCM;
+import hudson.security.ACL;
+import hudson.triggers.SCMTrigger;
+import jdk.nashorn.internal.runtime.options.LoggingOption;
+import jenkins.model.Jenkins;
+import jenkins.triggers.SCMTriggerItem;
+import org.acegisecurity.context.SecurityContext;
+import org.acegisecurity.context.SecurityContextHolder;
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.lang.StringUtils;
+import org.eclipse.jgit.transport.RemoteConfig;
+import org.eclipse.jgit.transport.URIish;
+import org.kohsuke.stapler.*;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
+import static javax.servlet.http.HttpServletResponse.SC_OK;
+import static org.apache.commons.lang.StringUtils.isNotEmpty;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.file.Files;
+
+// jgit
+import org.eclipse.jgit.api.FetchCommand;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.api.errors.InvalidRemoteException;
+import org.eclipse.jgit.api.errors.TransportException;
+import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.StoredConfig;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.transport.FetchResult;
+import org.eclipse.jgit.transport.RefSpec;
+import org.eclipse.jgit.api.ListBranchCommand.ListMode;
+import org.eclipse.jgit.revwalk.*;
+
+// jsch
+import com.jcraft.jsch.HostKey;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.JSchException;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+
+/**
+ * This page was originally gitplugin/gitstatus.java in the git-plugin code
+ * initPipeline extends the original git plugin listener and handles the
+ * !urlFound and !scmFound cases
+ */
+
+@Extension
+@SuppressWarnings(&quot;unused&quot;) // Jenkins extension
+
+// Extend the git-plugin Listener and catch the /git/notifyCommit?url=URL in parallel
+<span class="fc" id="L86">public class InitPipeline extends hudson.plugins.git.GitStatus.Listener {</span>
+
+    public String getDisplayName() {
+<span class="fc" id="L89">        return &quot;Git&quot;;</span>
+    }
+
+    public String getSearchUrl() {
+<span class="fc" id="L93">        return getUrlName();</span>
+    }
+
+    public String getIconFileName() {
+        // TODO
+<span class="fc" id="L98">        return null;</span>
+    }
+
+    public String getUrlName() {
+<span class="fc" id="L102">        return &quot;git&quot;;</span>
+    }
+
+<span class="fc" id="L105">    private String lastURL = &quot;&quot;;        // Required query parameter</span>
+
+<span class="fc" id="L107">    private static String urlPassed = &quot;&quot;;</span>
+        // clearly capture and use url string sent to class outside of
+        // doNotifyCommit method
+
+<span class="fc" id="L111">    private String debugEnabled = &quot;false&quot;;</span>
+        // enables process-tracking messages to jenkins.log
+
+<span class="fc" id="L114">    private String lastBranches = null; // Optional query parameter</span>
+<span class="fc" id="L115">    private String lastSHA1 = null;     // Optional query parameter</span>
+<span class="fc" id="L116">    private List&lt;ParameterValue&gt; lastBuildParameters = null;</span>
+<span class="fc" id="L117">    private static List&lt;ParameterValue&gt; lastStaticBuildParameters = null;</span>
+
+    // remove *** when no longer used
+<span class="fc" id="L120">    private String haveEnvVars = null;</span>
+
+    @Override
+    public String toString() {
+<span class="nc" id="L124">        StringBuilder s = new StringBuilder();</span>
+
+<span class="nc" id="L126">        s.append(&quot;URL: &quot;);</span>
+<span class="nc" id="L127">        s.append(lastURL);</span>
+
+<span class="nc bnc" id="L129" title="All 2 branches missed.">        if (lastSHA1 != null) {</span>
+<span class="nc" id="L130">            s.append(&quot; SHA1: &quot;);</span>
+<span class="nc" id="L131">            s.append(lastSHA1);</span>
+        }
+
+<span class="nc bnc" id="L134" title="All 2 branches missed.">        if (lastBranches != null) {</span>
+<span class="nc" id="L135">            s.append(&quot; Branches: &quot;);</span>
+<span class="nc" id="L136">            s.append(lastBranches);</span>
+        }
+
+<span class="nc bnc" id="L139" title="All 4 branches missed.">        if (lastBuildParameters != null &amp;&amp; !lastBuildParameters.isEmpty()) {</span>
+<span class="nc" id="L140">            s.append(&quot; Parameters: &quot;);</span>
+<span class="nc bnc" id="L141" title="All 2 branches missed.">            for (ParameterValue buildParameter : lastBuildParameters) {</span>
+<span class="nc" id="L142">                s.append(buildParameter.getName());</span>
+<span class="nc" id="L143">                s.append(&quot;='&quot;);</span>
+<span class="nc" id="L144">                s.append(buildParameter.getValue());</span>
+<span class="nc" id="L145">                s.append(&quot;',&quot;);</span>
+<span class="nc" id="L146">            }</span>
+<span class="nc" id="L147">            s.delete(s.length() - 1, s.length());</span>
+        }
+
+<span class="nc bnc" id="L150" title="All 4 branches missed.">        if (lastStaticBuildParameters != null &amp;&amp; !lastStaticBuildParameters.isEmpty()) {</span>
+<span class="nc" id="L151">            s.append(&quot; More parameters: &quot;);</span>
+<span class="nc bnc" id="L152" title="All 2 branches missed.">            for (ParameterValue buildParameter : lastStaticBuildParameters) {</span>
+<span class="nc" id="L153">                s.append(buildParameter.getName());</span>
+<span class="nc" id="L154">                s.append(&quot;='&quot;);</span>
+<span class="nc" id="L155">                s.append(buildParameter.getValue());</span>
+<span class="nc" id="L156">                s.append(&quot;',&quot;);</span>
+<span class="nc" id="L157">            }</span>
+<span class="nc" id="L158">            s.delete(s.length() - 1, s.length());</span>
+        }
+<span class="nc" id="L160">        return s.toString();</span>
+    }
+
+    public HttpResponse doNotifyCommit(HttpServletRequest request, @QueryParameter(required=true) String url,
+                                       @QueryParameter(required=false) String branches,
+                                       @QueryParameter(required=false) String sha1) throws ServletException, IOException {
+<span class="nc" id="L166">        lastURL = url;</span>
+<span class="nc" id="L167">        urlPassed = url; // isolate url string passed</span>
+<span class="nc" id="L168">        lastBranches = branches;</span>
+<span class="nc" id="L169">        lastSHA1 = sha1;</span>
+<span class="nc" id="L170">        lastBuildParameters = null;</span>
+<span class="nc" id="L171">        lastStaticBuildParameters = null;</span>
+        URIish uri;
+<span class="nc" id="L173">        List&lt;ParameterValue&gt; buildParameters = new ArrayList&lt;ParameterValue&gt;();</span>
+
+        try {
+<span class="nc" id="L176">            uri = new URIish(url);</span>
+<span class="nc" id="L177">        } catch (URISyntaxException e) {</span>
+<span class="nc" id="L178">            return HttpResponses.error(SC_BAD_REQUEST, new Exception(&quot;Illegal URL: &quot; + url, e));</span>
+<span class="nc" id="L179">        }</span>
+<span class="nc" id="L180">        String capture_me = &quot;&quot;;</span>
+<span class="nc" id="L181">        final Map&lt;String, String[]&gt; parameterMap = request.getParameterMap();</span>
+<span class="nc bnc" id="L182" title="All 2 branches missed.">        for (Map.Entry&lt;String, String[]&gt; entry : parameterMap.entrySet()) {</span>
+<span class="nc bnc" id="L183" title="All 2 branches missed.">            if (!(entry.getKey().equals(&quot;url&quot;)))</span>
+<span class="nc" id="L184">                capture_me = entry.getKey();</span>
+<span class="nc bnc" id="L185" title="All 6 branches missed.">            if (!(entry.getKey().equals(&quot;url&quot;)) &amp;&amp; !(entry.getKey().equals(&quot;branches&quot;)) &amp;&amp; !(entry.getKey().equals(&quot;sha1&quot;)))</span>
+<span class="nc bnc" id="L186" title="All 2 branches missed.">                if (entry.getValue()[0] != null)</span>
+<span class="nc" id="L187">                    buildParameters.add(new StringParameterValue(entry.getKey(), entry.getValue()[0]));</span>
+<span class="nc" id="L188">        }</span>
+<span class="nc" id="L189">        lastBuildParameters = buildParameters;</span>
+<span class="nc" id="L190">        branches = Util.fixEmptyAndTrim(branches);</span>
+
+        String[] branchesArray;
+<span class="nc bnc" id="L193" title="All 2 branches missed.">        if (branches == null) {</span>
+<span class="nc" id="L194">            branchesArray = new String[0];</span>
+        } else {
+<span class="nc" id="L196">            branchesArray = branches.split(&quot;,&quot;);</span>
+        }
+
+<span class="nc" id="L199">        final List&lt;hudson.plugins.git.GitStatus.ResponseContributor&gt; contributors = new ArrayList&lt;hudson.plugins.git.GitStatus.ResponseContributor&gt;();</span>
+<span class="nc" id="L200">        Jenkins jenkins = Jenkins.getInstance();</span>
+<span class="nc bnc" id="L201" title="All 2 branches missed.">        if (jenkins == null) {</span>
+<span class="nc" id="L202">            return HttpResponses.error(SC_BAD_REQUEST, new Exception(&quot;Jenkins.getInstance() null for : &quot; + url));</span>
+        }
+<span class="nc bnc" id="L204" title="All 2 branches missed.">        for (hudson.plugins.git.GitStatus.Listener listener : jenkins.getExtensionList(hudson.plugins.git.GitStatus.Listener.class)) {</span>
+<span class="nc" id="L205">            contributors.addAll(listener.onNotifyCommit(uri, sha1, buildParameters, branchesArray));</span>
+<span class="nc" id="L206">        }</span>
+
+<span class="nc" id="L208">        return new HttpResponse() {</span>
+            public void generateResponse(StaplerRequest req, StaplerResponse rsp, Object node)
+                    throws IOException, ServletException {
+<span class="nc" id="L211">                rsp.setStatus(SC_OK);</span>
+<span class="nc" id="L212">                rsp.setContentType(&quot;text/plain&quot;);</span>
+<span class="nc bnc" id="L213" title="All 2 branches missed.">                for (hudson.plugins.git.GitStatus.ResponseContributor c : contributors) {</span>
+<span class="nc" id="L214">                    c.addHeaders(req, rsp);</span>
+<span class="nc" id="L215">                }</span>
+<span class="nc" id="L216">                PrintWriter w = rsp.getWriter();</span>
+<span class="nc bnc" id="L217" title="All 2 branches missed.">                for (hudson.plugins.git.GitStatus.ResponseContributor c : contributors) {</span>
+<span class="nc" id="L218">                    c.writeBody(req, rsp, w);</span>
+<span class="nc" id="L219">                }</span>
+<span class="nc" id="L220">            }</span>
+        };
+    }
+
+    public static boolean looselyMatches(URIish lhs, URIish rhs) {
+<span class="nc bnc" id="L225" title="All 2 branches missed.">        return StringUtils.equals(lhs.getHost(),rhs.getHost())</span>
+<span class="nc bnc" id="L226" title="All 2 branches missed.">                &amp;&amp; StringUtils.equals(normalizePath(lhs.getPath()), normalizePath(rhs.getPath()));</span>
+    }
+
+    private static String normalizePath(String path) {
+<span class="nc bnc" id="L230" title="All 2 branches missed.">        if (path.startsWith(&quot;/&quot;))   path=path.substring(1);</span>
+<span class="nc bnc" id="L231" title="All 2 branches missed.">        if (path.endsWith(&quot;/&quot;))     path=path.substring(0,path.length()-1);</span>
+<span class="nc bnc" id="L232" title="All 2 branches missed.">        if (path.endsWith(&quot;.git&quot;))  path=path.substring(0,path.length()-4);</span>
+<span class="nc" id="L233">        return path;</span>
+    }
+
+    @Override
+
+    public List&lt;hudson.plugins.git.GitStatus.ResponseContributor&gt; onNotifyCommit(URIish uri, String sha1, List&lt;ParameterValue&gt; buildParameters, String... branches) {
+
+        /** 
+         * Untouched code...
+        */
+         
+        // log
+<span class="nc bnc" id="L245" title="All 2 branches missed.">        if (LOGGER.isLoggable(Level.FINE)) {</span>
+<span class="nc" id="L246">            LOGGER.fine(&quot;Received notification for uri = &quot; + uri + &quot; ; sha1 = &quot; + sha1 + &quot; ; branches = &quot; + Arrays.toString(branches));</span>
+        }
+
+<span class="nc" id="L249">        lastStaticBuildParameters = null;</span>
+<span class="nc" id="L250">        List&lt;ParameterValue&gt; allBuildParameters = new ArrayList&lt;ParameterValue&gt;(buildParameters);</span>
+<span class="nc" id="L251">        List&lt;hudson.plugins.git.GitStatus.ResponseContributor&gt; result = new ArrayList&lt;hudson.plugins.git.GitStatus.ResponseContributor&gt;();</span>
+        // run in high privilege to see all the projects anonymous users don't see.
+        // this is safe because when we actually schedule a build, it's a build that can
+        // happen at some random time anyway.
+<span class="nc" id="L255">        SecurityContext old = ACL.impersonate(ACL.SYSTEM);</span>
+        try {
+
+<span class="nc" id="L258">            boolean scmFound = false,</span>
+<span class="nc" id="L259">                    urlFound = false;</span>
+<span class="nc" id="L260">            Jenkins jenkins = Jenkins.getInstance();</span>
+<span class="nc bnc" id="L261" title="All 2 branches missed.">            if (jenkins == null) {</span>
+<span class="nc" id="L262">                LOGGER.severe(&quot;Jenkins.getInstance() is null in CicdDiscover.onNotifyCommit&quot;);</span>
+<span class="nc" id="L263">                return result;</span>
+            }
+<span class="nc bnc" id="L265" title="All 2 branches missed.">            for (final Item project : Jenkins.getInstance().getAllItems()) {</span>
+<span class="nc" id="L266">                SCMTriggerItem scmTriggerItem = SCMTriggerItem.SCMTriggerItems.asSCMTriggerItem(project);</span>
+<span class="nc bnc" id="L267" title="All 2 branches missed.">                if (scmTriggerItem == null) {</span>
+<span class="nc" id="L268">                    continue;</span>
+                }
+                SCMS:
+<span class="nc bnc" id="L271" title="All 2 branches missed.">                for (SCM scm : scmTriggerItem.getSCMs()) {</span>
+<span class="nc bnc" id="L272" title="All 2 branches missed.">                    if (!(scm instanceof GitSCM)) {</span>
+<span class="nc" id="L273">                        continue;</span>
+                    }
+<span class="nc" id="L275">                    GitSCM git = (GitSCM) scm;</span>
+                    // here's the first &quot;exists&quot; case
+<span class="nc" id="L277">                    scmFound = true;</span>
+
+<span class="nc bnc" id="L279" title="All 2 branches missed.">                    for (RemoteConfig repository : git.getRepositories()) {</span>
+<span class="nc" id="L280">                        boolean repositoryMatches = false,</span>
+<span class="nc" id="L281">                                branchMatches = false;</span>
+<span class="nc" id="L282">                        URIish matchedURL = null;</span>
+<span class="nc bnc" id="L283" title="All 2 branches missed.">                        for (URIish remoteURL : repository.getURIs()) {</span>
+<span class="nc bnc" id="L284" title="All 2 branches missed.">                            if (looselyMatches(uri, remoteURL)) {</span>
+<span class="nc" id="L285">                                repositoryMatches = true;</span>
+<span class="nc" id="L286">                                matchedURL = remoteURL;</span>
+<span class="nc" id="L287">                                break;</span>
+                            }
+<span class="nc" id="L289">                        }</span>
+
+<span class="nc bnc" id="L291" title="All 4 branches missed.">                        if (!repositoryMatches || git.getExtensions().get(IgnoreNotifyCommit.class) != null) {</span>
+<span class="nc" id="L292">                            continue;</span>
+                        }
+
+<span class="nc" id="L295">                        SCMTrigger trigger = scmTriggerItem.getSCMTrigger();</span>
+<span class="nc bnc" id="L296" title="All 4 branches missed.">                        if (trigger == null || trigger.isIgnorePostCommitHooks()) {</span>
+<span class="nc" id="L297">                            LOGGER.info(&quot;no trigger, or post-commit hooks disabled, on &quot; + project.getFullDisplayName());</span>
+<span class="nc" id="L298">                            continue;</span>
+                        }
+
+<span class="nc" id="L301">                        boolean branchFound = false,</span>
+<span class="nc" id="L302">                                parametrizedBranchSpec = false;</span>
+<span class="nc bnc" id="L303" title="All 2 branches missed.">                        if (branches.length == 0) {</span>
+<span class="nc" id="L304">                            branchFound = true;</span>
+                        } else {
+                            OUT:
+<span class="nc bnc" id="L307" title="All 2 branches missed.">                            for (BranchSpec branchSpec : git.getBranches()) {</span>
+<span class="nc bnc" id="L308" title="All 2 branches missed.">                                if (branchSpec.getName().contains(&quot;$&quot;)) {</span>
+                                    // If the branchspec is parametrized, always run the polling
+<span class="nc bnc" id="L310" title="All 2 branches missed.">                                    if (LOGGER.isLoggable(Level.FINE)) {</span>
+<span class="nc" id="L311">                                        LOGGER.fine(&quot;Branch Spec is parametrized for &quot; + project.getFullDisplayName() + &quot;. &quot;);</span>
+                                    }
+<span class="nc" id="L313">                                    branchFound = true;</span>
+<span class="nc" id="L314">                                    parametrizedBranchSpec = true;</span>
+                                } else {
+<span class="nc bnc" id="L316" title="All 2 branches missed.">                                    for (String branch : branches) {</span>
+<span class="nc bnc" id="L317" title="All 2 branches missed.">                                        if (branchSpec.matches(repository.getName() + &quot;/&quot; + branch)) {</span>
+<span class="nc bnc" id="L318" title="All 2 branches missed.">                                            if (LOGGER.isLoggable(Level.FINE)) {</span>
+<span class="nc" id="L319">                                                LOGGER.fine(&quot;Branch Spec &quot; + branchSpec + &quot; matches modified branch &quot;</span>
+<span class="nc" id="L320">                                                        + branch + &quot; for &quot; + project.getFullDisplayName() + &quot;. &quot;);</span>
+                                            }
+<span class="nc" id="L322">                                            branchFound = true;</span>
+<span class="nc" id="L323">                                            break OUT;</span>
+                                        }
+                                    }
+                                }
+<span class="nc" id="L327">                            }</span>
+                        }
+<span class="nc bnc" id="L329" title="All 2 branches missed.">                        if (!branchFound) continue;</span>
+<span class="nc" id="L330">                        urlFound = true;</span>
+<span class="nc bnc" id="L331" title="All 4 branches missed.">                        if (!(project instanceof AbstractProject &amp;&amp; ((AbstractProject) project).isDisabled())) {</span>
+                            //JENKINS-30178 Add default parameters defined in the job
+<span class="nc bnc" id="L333" title="All 2 branches missed.">                            if (project instanceof Job) {</span>
+<span class="nc" id="L334">                                Set&lt;String&gt; buildParametersNames = new HashSet&lt;String&gt;();</span>
+<span class="nc bnc" id="L335" title="All 2 branches missed.">                                for (ParameterValue parameterValue : allBuildParameters) {</span>
+<span class="nc" id="L336">                                    buildParametersNames.add(parameterValue.getName());</span>
+<span class="nc" id="L337">                                }</span>
+
+<span class="nc" id="L339">                                List&lt;ParameterValue&gt; jobParametersValues = getDefaultParametersValues((Job) project);</span>
+<span class="nc bnc" id="L340" title="All 2 branches missed.">                                for (ParameterValue defaultParameterValue : jobParametersValues) {</span>
+<span class="nc bnc" id="L341" title="All 2 branches missed.">                                    if (!buildParametersNames.contains(defaultParameterValue.getName())) {</span>
+<span class="nc" id="L342">                                        allBuildParameters.add(defaultParameterValue);</span>
+                                    }
+<span class="nc" id="L344">                                }</span>
+                            }
+<span class="nc bnc" id="L346" title="All 4 branches missed.">                            if (!parametrizedBranchSpec &amp;&amp; isNotEmpty(sha1)) {</span>
+                                    /* If SHA1 and not a parameterized branch spec, then schedule build.
+                                     * NOTE: This is SCHEDULING THE BUILD, not triggering polling of the repo.
+                                     * If no SHA1 or the branch spec is parameterized, it will only poll.
+                                     */
+<span class="nc" id="L351">                                LOGGER.info(&quot;Scheduling &quot; + project.getFullDisplayName() + &quot; to build commit &quot; + sha1);</span>
+
+                                /**
+                                 * Dropping the job scheduling section
+                                 * Cases where the job exists should log but not act for InitPipeline...
+                                 */
+
+                                /*
+                                scmTriggerItem.scheduleBuild2(scmTriggerItem.getQuietPeriod(),
+                                        new CauseAction(new CommitHookCause(sha1)),
+                                        new RevisionParameterAction(sha1, matchedURL), new ParametersAction(allBuildParameters));
+                                result.add(new ScheduledResponseContributor(project));
+                                */
+
+                            } else {
+
+                                    /* Poll the repository for changes
+                                     * NOTE: This is not scheduling the build, just polling for changes
+                                     * If the polling detects changes, it will schedule the build
+                                     */
+<span class="nc" id="L371">                                LOGGER.info(&quot; CICD Discover:: NOT Triggering the polling of &quot; + project.getFullDisplayName());</span>
+
+
+                                 /**
+                                 * Dropping the job scheduling section
+                                 * Cases where the job exists should log but not act for InitPipeline...
+                                 */
+
+                                /*
+                                trigger.run();
+                                result.add(new PollingScheduledResponseContributor(project));
+                                */
+
+<span class="nc" id="L384">                                break SCMS; // no need to trigger the same project twice, so do not consider other GitSCMs in it</span>
+                            }
+                        }
+                        break;
+                    }
+
+<span class="nc" id="L390">                }</span>
+<span class="nc" id="L391">            }</span>
+
+            /**
+             * END Gitstatus.java mostly unmodified
+             * NEW CODE starts...
+             */
+
+<span class="nc bnc" id="L398" title="All 2 branches missed.">            if (!scmFound) {</span>
+<span class="nc" id="L399">                result.add(new MessageResponseContributor(&quot;initPipeline:: repository: &quot; +  uri.toString() + &quot; - START&quot;));</span>
+<span class="nc" id="L400">                urlPassed = uri.toString();</span>
+                // call prelims
+<span class="nc" id="L402">                LOGGER.log(Level.INFO, &quot;initPipeline:: onNotifyCommit !scmFound: - START init Pipeline...&quot;);</span>
+
+                /**
+                 * ...am I in debug mode or no?
+                 */
+<span class="nc" id="L407">                checkDebug();  // if /var/lib/jenkins/plugins/.cicd-discover.debug exists, enable debug</span>
+                // sets global haveEnvVars if completely successful from getEnvVars()
+<span class="nc bnc" id="L409" title="All 2 branches missed.">                if (debugEnabled == &quot;true&quot;) {</span>
+<span class="nc" id="L410">                    result.add(new MessageResponseContributor(&quot;initPipeline:: &quot; +  uri.toString() + &quot;: debug verbose logging enabled to Jenkins controller&quot;));</span>
+                } else {
+<span class="nc" id="L412">                    result.add(new MessageResponseContributor(&quot;initPipeline:: &quot; +  uri.toString() + &quot;: terse logging, no debug&quot;));</span>
+                }
+
+                /**
+                 * drop out of java to /var/lib/jenkins/scripts/initPipeline executable...
+                 */
+<span class="nc" id="L418">                instantiatePipeline();</span>
+
+<span class="nc bnc" id="L420" title="All 2 branches missed.">            } else if (!urlFound) {</span>
+<span class="nc" id="L421">                result.add(new MessageResponseContributor(&quot;initPipeline:: repository: &quot; +  uri.toString() + &quot; - START&quot;));</span>
+<span class="nc" id="L422">                urlPassed = uri.toString();</span>
+                // call prelims
+<span class="nc" id="L424">                LOGGER.log(Level.INFO, &quot;initPipeline:: onNotifyCommit !urlFound:  - START Cicd Discover...&quot;);</span>
+
+                /**
+                 *  ...am I in debug mode or no?
+                 */
+<span class="nc" id="L429">                checkDebug();  // if /var/lib/jenkins/plugins/.cicd-discover.debug exists, enable debug</span>
+                // sets global haveEnvVars if completely successful
+<span class="nc bnc" id="L431" title="All 2 branches missed.">                if (debugEnabled == &quot;true&quot;) {</span>
+<span class="nc" id="L432">                    result.add(new MessageResponseContributor(&quot;initPipeline:: &quot; +  uri.toString() + &quot;: debug verbose logging enabled to Jenkins controller&quot;));</span>
+                } else {
+<span class="nc" id="L434">                    result.add(new MessageResponseContributor(&quot;initPipeline:: &quot; +  uri.toString() + &quot;: terse logging, no debug&quot;));</span>
+                }
+
+                /**
+                 * drop out of java to /var/lib/jenkins/scripts/initPipeline executable...
+                 */
+<span class="nc" id="L440">                instantiatePipeline();</span>
+
+            }
+<span class="nc" id="L443">            LOGGER.log(Level.INFO, &quot;initPipeline:: onNotifyCommit COMPLETE init pipeline execution&quot;);</span>
+<span class="nc" id="L444">            result.add(new MessageResponseContributor(&quot;initPipeline:: repository: &quot; +  uri.toString() + &quot; - COMPLETED&quot;));</span>
+<span class="nc" id="L445">            lastStaticBuildParameters = allBuildParameters;</span>
+<span class="nc" id="L446">            return result;</span>
+        } finally {
+<span class="nc" id="L448">            SecurityContextHolder.setContext(old);</span>
+<span class="nc" id="L449">        }</span>
+    }
+
+    /**
+     * START of Gitstatus.java legacy methods    
+     * This code  from lines 452 through to 590 (or so...)
+     * is directly from Gitstatus.java, unaltered
+     */
+
+    public static class CommitHookCause extends Cause {
+
+        public final String sha1;
+
+<span class="nc" id="L462">        public CommitHookCause(String sha1) {</span>
+<span class="nc" id="L463">            this.sha1 = sha1;</span>
+<span class="nc" id="L464">        }</span>
+
+        @Override
+        public String getShortDescription() {
+<span class="nc" id="L468">            return &quot;commit notification &quot; + sha1;</span>
+        }
+    }
+
+    public static class MessageResponseContributor extends hudson.plugins.git.GitStatus.ResponseContributor {
+        /**
+         * The message.
+         */
+        private final String msg;
+
+        /**
+         * Constructor.
+         *
+         * @param msg the message.
+         */
+<span class="nc" id="L483">        public MessageResponseContributor(String msg) {</span>
+<span class="nc" id="L484">            this.msg = msg;</span>
+<span class="nc" id="L485">        }</span>
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public void writeBody(PrintWriter w) {
+<span class="nc" id="L492">            w.println(msg);</span>
+<span class="nc" id="L493">        }</span>
+    }
+
+    private static class ScheduledResponseContributor extends hudson.plugins.git.GitStatus.ResponseContributor {
+        /**
+         * The project
+         */
+        private final Item project;
+
+        /**
+         * Constructor.
+         *
+         * @param project the project.
+         */
+<span class="nc" id="L507">        public ScheduledResponseContributor(Item project) {</span>
+<span class="nc" id="L508">            this.project = project;</span>
+<span class="nc" id="L509">        }</span>
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public void addHeaders(StaplerRequest req, StaplerResponse rsp) {
+<span class="nc" id="L516">            rsp.addHeader(&quot;Triggered&quot;, project.getAbsoluteUrl());</span>
+<span class="nc" id="L517">        }</span>
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public void writeBody(PrintWriter w) {
+<span class="nc" id="L524">            w.println(&quot;Scheduled &quot; + project.getFullDisplayName());</span>
+<span class="nc" id="L525">        }</span>
+    }
+
+    private static class PollingScheduledResponseContributor extends hudson.plugins.git.GitStatus.ResponseContributor {
+        /**
+         * The project
+         */
+        private final Item project;
+
+        /**
+         * Constructor.
+         *
+         * @param project the project.
+         */
+<span class="nc" id="L539">        public PollingScheduledResponseContributor(Item project) {</span>
+<span class="nc" id="L540">            this.project = project;</span>
+<span class="nc" id="L541">        }</span>
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public void addHeaders(StaplerRequest req, StaplerResponse rsp) {
+<span class="nc" id="L548">            rsp.addHeader(&quot;Triggered&quot;, project.getAbsoluteUrl());</span>
+<span class="nc" id="L549">        }</span>
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public void writeBody(PrintWriter w) {
+<span class="nc" id="L556">            w.println(&quot;Scheduled polling of &quot; + project.getFullDisplayName());</span>
+<span class="nc" id="L557">        }</span>
+    }
+
+<span class="fc" id="L560">    private static final Logger LOGGER = Logger.getLogger(InitPipeline.class.getName());</span>
+
+    private ArrayList&lt;ParameterValue&gt; getDefaultParametersValues(Job&lt;?,?&gt; job) {
+        ArrayList&lt;ParameterValue&gt; defValues;
+<span class="nc" id="L564">        ParametersDefinitionProperty paramDefProp = job.getProperty(ParametersDefinitionProperty.class);</span>
+
+<span class="nc bnc" id="L566" title="All 2 branches missed.">        if (paramDefProp != null) {</span>
+<span class="nc" id="L567">            List &lt;ParameterDefinition&gt; parameterDefinition = paramDefProp.getParameterDefinitions();</span>
+<span class="nc" id="L568">            defValues = new ArrayList&lt;ParameterValue&gt;(parameterDefinition.size());</span>
+
+<span class="nc" id="L570">        } else {</span>
+<span class="nc" id="L571">            defValues = new ArrayList&lt;ParameterValue&gt;();</span>
+<span class="nc" id="L572">            return defValues;</span>
+        }
+
+            /* Scan for all parameter with an associated default values */
+<span class="nc bnc" id="L576" title="All 2 branches missed.">        for (ParameterDefinition paramDefinition : paramDefProp.getParameterDefinitions()) {</span>
+<span class="nc" id="L577">            ParameterValue defaultValue  = paramDefinition.getDefaultParameterValue();</span>
+
+<span class="nc bnc" id="L579" title="All 2 branches missed.">            if (defaultValue != null) {</span>
+<span class="nc" id="L580">                defValues.add(defaultValue);</span>
+            }
+<span class="nc" id="L582">        }</span>
+
+<span class="nc" id="L584">        return defValues;</span>
+    }
+
+    /**
+     * END GitStaatus.java original code
+     */
+
+    /**
+     * NEW CODE
+     * InstantiatePipeline()
+     */
+
+    private void instantiatePipeline() {
+        
+        // Using jenkinsHome from /etc/sysconfig/jenkins, explicitly exporting JENKINS_HOME
+<span class="nc" id="L599">        String jenkinsHome = System.getenv(&quot;JENKINS_HOME&quot;);</span>
+        // arg is urlPassed, call is to initpipeline which does the heavy lifting
+<span class="nc" id="L601">        ProcessBuilder newpipe = new ProcessBuilder(jenkinsHome + &quot;/scripts/&quot; + &quot;initpipeline&quot;, urlPassed);</span>
+        Process process;
+        InputStream is;
+        try {
+<span class="nc" id="L605">            process = newpipe.start();</span>
+<span class="nc" id="L606">            is  = process.getInputStream();</span>
+<span class="nc" id="L607">            InputStreamReader isr = new InputStreamReader(is);</span>
+<span class="nc" id="L608">            BufferedReader isbr = new BufferedReader(isr);</span>
+            String idline;
+            // from this we should retrieve output
+            try {
+<span class="nc bnc" id="L612" title="All 2 branches missed.">                while ((idline = isbr.readLine()) != null) {</span>
+<span class="nc bnc" id="L613" title="All 2 branches missed.">                    if (debugEnabled == &quot;true&quot;) {</span>
+<span class="nc" id="L614">                        LOGGER.log(Level.INFO, &quot;initPipeline:: instantiatePipeline: idline: &quot; + idline);</span>
+                    }
+                }
+<span class="nc" id="L617">            } catch (IOException e) {</span>
+<span class="nc" id="L618">                    e.printStackTrace();</span>
+<span class="nc" id="L619">            }</span>
+            try {
+<span class="nc" id="L621">                process.waitFor();</span>
+<span class="nc" id="L622">            } catch (InterruptedException e) {</span>
+<span class="nc" id="L623">                e.printStackTrace();</span>
+<span class="nc" id="L624">            }</span>
+<span class="nc" id="L625">        } catch (IOException e) {</span>
+<span class="nc" id="L626">            e.printStackTrace();</span>
+<span class="nc" id="L627">        }</span>
+<span class="nc bnc" id="L628" title="All 2 branches missed.">        if (debugEnabled == &quot;true&quot;) {</span>
+<span class="nc" id="L629">            LOGGER.log(Level.INFO, &quot;InitPipeline:: instanciatePipeline:  completed initpipeline call&quot;);</span>
+        }
+
+<span class="nc" id="L632">    }</span>
+
+    /**
+     * checks for /var/lib/jenkins/plugins/.cicd-discover.debug file present
+     * if present, enables debug flag, which sends added logging to jenkins.log
+     */
+    private void checkDebug() {
+        // set up file name
+<span class="nc" id="L640">        String jen_home = System.getenv(&quot;JENKINS_HOME&quot;);</span>
+<span class="nc" id="L641">        String debugFile = jen_home + &quot;/plugins/.cicd-discover.debug&quot;;</span>
+        // verify the file
+<span class="nc" id="L643">        File f = new File(debugFile);</span>
+<span class="nc bnc" id="L644" title="All 2 branches missed.">        if (f.exists()) {</span>
+<span class="nc" id="L645">            LOGGER.log(Level.INFO, &quot;initPipeline:: checkDebug: found file at &quot; + debugFile + &quot; ...enabling debug messages&quot;);</span>
+<span class="nc" id="L646">            debugEnabled = &quot;true&quot;;</span>
+        } else {
+<span class="nc" id="L648">            debugEnabled = &quot;false&quot;;</span>
+        }
+<span class="nc" id="L650">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>

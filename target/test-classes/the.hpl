@@ -1,0 +1,21 @@
+Manifest-Version: 1.0
+Group-Id: org.jenkins-ci.plugins
+Short-Name: initpipeline
+Long-Name: Init Pipeline Jenkins Plugin
+Url: https://bitbucket.org/xosdigital/init_pipeline_jenkins_plugin/src
+ /master/
+Plugin-Version: 0.1.0.002
+Hudson-Version: 1.625.3
+Jenkins-Version: 1.625.3
+Plugin-Dependencies: git:2.4.4
+Plugin-Developers: 
+Libraries: /Users/DougMunsinger/Google Drive/arkCICD/arkCICD_GM/InitPi
+ peline_Jenkins_Plugin/src/main/resources,/Users/DougMunsinger/Google 
+ Drive/arkCICD/arkCICD_GM/InitPipeline_Jenkins_Plugin/target/classes,/
+ Users/DougMunsinger/.m2/repository/commons-collections/commons-collec
+ tions/3.0/commons-collections-3.0.jar,/Users/DougMunsinger/.m2/reposi
+ tory/com/github/stephenc/findbugs/findbugs-annotations/1.3.9-1/findbu
+ gs-annotations-1.3.9-1.jar
+Resource-Path: /Users/DougMunsinger/Google Drive/arkCICD/arkCICD_GM/In
+ itPipeline_Jenkins_Plugin/src/main/webapp
+
