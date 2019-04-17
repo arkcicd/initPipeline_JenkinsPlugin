@@ -157,6 +157,7 @@ if [[ -d "${TARGET}" ]]; then
 fi
 
 
+
 ### doCreateJob() 
 #   calls editPipelineConfig(), callAndCreatePipeline(), which cascades execution through
 #   not needed here... 
@@ -178,6 +179,11 @@ ls -la ${WORKSDIR}
 TMPCONF="${WORKSDIR}/tmp_config.xml"
 rm -f $TMPCONF # remove if exists
 
+# add newline at end of config.xml
+# text processing demands the last line end in newline, and for some reason 
+# without this added newline, the last line of the file gets dropped...
+echo "" >> ${WORKSDIR}/config.xml
+
 while IFS= read -r line; do
     if [[ $line =~ '<url>' ]]; then 
         echo "found url..."
@@ -186,11 +192,9 @@ while IFS= read -r line; do
         echo "found projectUrl..."
         echo "      <projectUrl>${CONFIGURL}</projectUrl>" >> $TMPCONF
     else
-        printf '%s\n' "$line" >> $TMPCONF
+        echo "$line" >> $TMPCONF
     fi     
 done < ${WORKSDIR}/config.xml
-# move the edited config.xml into place
-mv -f $TMPCONF ${WORKSDIR}/config.xml
 
 
 
@@ -210,15 +214,34 @@ API=`cat /home/centos/.ssh/devopsUserApi`
 CRUMB=$(curl -s "http://devops:${API}@localhost:8080/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,\":\",//crumb)")
 echo $CRUMB
 
-#
+# check the config.xml
+echo ""
+echo "config.xml"
+echo ""
+cat ${WORKSDIR}/tmp_config.xml
+echo ""
+echo "end config.xml"
+echo ""
+
+# curl -s -X POST "http://devops:${API}@localhost:8080/createItem?name=${REPO}_${PROJECT}" --data-binary @${WORKSDIR}/config.xml -H "${CRUMB}" -H "Content-Type:text/xml"
+# curl -s -X POST "http://devops:${API}@localhost:8080/createItem?name=${REPO}_${PROJECT}"  --data-binary @${WORKSDIR}/tmp_config.xml -H "${CRUMB}" -H "Content-Type:text/xml"
+
+RESPONSE=`curl -s -X POST "http://devops:${API}@localhost:8080/createItem?name=${REPO}_${PROJECT}" --write-out "%{http_code}\n"  --data-binary @${TMPCONF} -H "${CRUMB}" -H "Content-Type:text/xml"`
+if [[ $RESPONSE == 200 ]]; then
+    echo "CREATE pipeline job ${REPO}_${PROJECT} succeeded..."
+else
+    echo "FAILED:: CREATE: createItem failed for ${REPO}_${PROJECT} - Exiting..."
+    exit 1
+fi
+
 
 
 ### procureJenkinsCrumb() 
 #   gets the crumb string for use in calling the createItem and build endpoints in jenkins
-# API=`cat /home/centos/.ssh/devopsUserApi`
-# CRUMB=$(curl -s "http://devops:${API}@localhost:8080/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,\":\",//crumb)")
-# echo $CRUMB
-# as above...
+#   API=`cat /home/centos/.ssh/devopsUserApi`
+#   CRUMB=$(curl -s "http://devops:${API}@localhost:8080/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,\":\",//crumb)")
+#   echo $CRUMB
+#   as above...
 
 
 
@@ -226,17 +249,60 @@ echo $CRUMB
 #   grabs the devopsUserApi file content and presents that to jenkins
 #   this MAY have changed in the same way the reload_config.sh script had to adjust as jenkins made under-the-hood
 #   security model changes, so this may also need to adjust to that
-
+#   implemented above...
 
 
 ### restrictConfigXml() 
 #   edits the config.xml for the new pipeline job, injecting the latest commithash as the target to build, 
 #   then calls buildPipeline()
 
+# so here we have the job created, but it would build incorrectly - jenkins initial build call would look
+# for history and then give up and build the next alphabetical branch...
+# turns out the "Branch Specifier" field can take a commit hash...
+# start with tmp_config.xml ($TMPCONF)
+#          <name>**</name>
+
+# <name> will be toggled between these two values
+WIDEOPEN='          <name>**</name>'
+RESTRICTED="          <name>${GITHASH}</name>"
+
+# next tmp file
+TMPTOO="${WORKSDIR}/tmptoo_config.xml"
+
+# add the newline at the end of the file
+echo "" >> $TMPCONF
+# and read through, changing the Branch Specifier xml tag...
+while IFS= read -r line; do
+    if [[ $line =~ '<name>' ]]; then
+        echo "found Branch Specifier..."
+        echo "${RESTRICTED}" >> $TMPTOO
+    else
+        echo "$line" >> $TMPTOO
+    fi
+done < $TMPCONF
+
+# POST this as config.xml update...
+RESPONSE=`curl -s -X POST "http://devops:${API}@localhost:8080/job/${REPO}_${PROJECT}/config.xml" --write-out "%{http_code}\n"  --data-binary @${TMPTOO} -H "${CRUMB}" -H "Content-Type:text/xml"`
+if [[ $RESPONSE == 200 ]]; then
+    echo "RESTRICT pipeline job ${REPO}_${PROJECT} succeeded..."
+else
+    echo "FAILED:: RESTRICT failed for ${REPO}_${PROJECT} - Exiting..."
+    exit 1
+fi
+
 
 
 ### buildPipeline() 
 #   sends /build to the pipeline - once the job registers as building, then calls removeRestrictedConfigXml()
+
+ESPONSE=`curl -s -X POST "http://devops:${API}@localhost:8080/job/${REPO}_${PROJECT}/build" --write-out "%{http_code}\n" -H "${CRUMB}" -H "Content-Type:text/xml"`
+if [[ $RESPONSE == 200 ]]; then
+    echo "BUILD pipeline job ${REPO}_${PROJECT} succeeded..."
+else
+    echo "FAILED:: BUILD failed for ${REPO}_${PROJECT} - Exiting..."
+    exit 1
+fi
+
 
 
 
@@ -244,6 +310,13 @@ echo $CRUMB
 #   sleeps 10 seconds, then loops through until it sees the commit hash in the response from the jenkins server, 
 #   once it sees the build present and running, edit the commithash out of the config.xml and return to "**"
 
-
+# the first step is to ensure this is actually building BEFORE frestting the restriction...
+# loop through checking build status
+CHECKBUILD="Null"
+while [[ ${CHECKBUILD} == "Null" ]]; do
+    ESPONSE=`curl -s -X POST "http://devops:${API}@localhost:8080/job/${REPO}_${PROJECT}/1/api/xml" -H "${CRUMB}" -H "Content-Type:text/xml"`
+    echo "${RESPONSE}"
+    sleep 5
+done
 
 ### complete
