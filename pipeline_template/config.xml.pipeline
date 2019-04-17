@@ -1,8 +1,8 @@
 <?xml version='1.1' encoding='UTF-8'?>
-<flow-definition plugin="workflow-job@2.25">
+<flow-definition plugin="workflow-job@2.31">
   <actions>
-    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobAction plugin="pipeline-model-definition@1.3.2"/>
-    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@1.3.2">
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobAction plugin="pipeline-model-definition@1.3.6"/>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@1.3.6">
       <jobProperties/>
       <triggers/>
       <parameters/>
@@ -12,9 +12,13 @@
   <description></description>
   <keepDependencies>false</keepDependencies>
   <properties>
+    <com.coravy.hudson.plugins.github.GithubProjectProperty plugin="github@1.29.4">
+      <projectUrl>ssh://git@bitbucket.org/xosdigital/initpipeline_jenkinsplugin.git/</projectUrl>
+      <displayName></displayName>
+    </com.coravy.hudson.plugins.github.GithubProjectProperty>
     <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
       <triggers>
-        <com.cloudbees.jenkins.GitHubPushTrigger plugin="github@1.29.2">
+        <com.cloudbees.jenkins.GitHubPushTrigger plugin="github@1.29.4">
           <spec></spec>
         </com.cloudbees.jenkins.GitHubPushTrigger>
         <hudson.triggers.SCMTrigger>
@@ -23,23 +27,13 @@
         </hudson.triggers.SCMTrigger>
       </triggers>
     </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
-    <org.datadog.jenkins.plugins.datadog.DatadogJobProperty plugin="datadog@0.6.3">
-      <tagProperties></tagProperties>
-      <tagFile></tagFile>
-      <emitOnCheckout>false</emitOnCheckout>
-    </org.datadog.jenkins.plugins.datadog.DatadogJobProperty>
-    <com.coravy.hudson.plugins.github.GithubProjectProperty plugin="github@1.29.2">
-      <projectUrl>ssh://git@git.ouroath.com/dmunsinger15/jenkins-base-build-agent-ami.git/</projectUrl>
-      <displayName></displayName>
-    </com.coravy.hudson.plugins.github.GithubProjectProperty>
   </properties>
-  <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@2.55">
-    <scm class="hudson.plugins.git.GitSCM" plugin="git@3.9.1">
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@2.64">
+    <scm class="hudson.plugins.git.GitSCM" plugin="git@3.9.3">
       <configVersion>2</configVersion>
       <userRemoteConfigs>
         <hudson.plugins.git.UserRemoteConfig>
-          <url>ssh://git@git.ouroath.com/dmunsinger15/jenkins-base-build-agent-ami.git</url>
-          <credentialsId>c0e21fda-697c-433c-8f1f-74e9f018b0aa</credentialsId>
+          <url>ssh://git@bitbucket.org/xosdigital/initpipeline_jenkinsplugin.git</url>
         </hudson.plugins.git.UserRemoteConfig>
       </userRemoteConfigs>
       <branches>
