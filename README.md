@@ -11,4 +11,3 @@ The Git Plugin drops the notifyCommit on the floor with a single log line to /va
 
 We listen alongside and catch that case, calling an external golang binary to configure and build a new pipeline.
 
-Once that initial create and build is complete, the Git Plugin acts on future notifyCommits, this plugin logs and ignores.
