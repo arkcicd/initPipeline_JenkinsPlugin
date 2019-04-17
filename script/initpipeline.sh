@@ -2,7 +2,7 @@
 
 # this is bash for now, translate into golang once this works...
 
-# this takes urlPassed as an arg from initPipeline_JenkinsPlugin
+# this takes NOTIFYURL as an arg from initPipeline_JenkinsPlugin
 if [[ -z $1 ]]; then
     echo "Usage: $0 NOTIFYURL"
     echo "where NOTIFYURL is the notifyCommit piece sent to Jenkins at /git"
@@ -15,24 +15,11 @@ echo "NOTIFYURL:  ${NOTIFYURL}"
 # this comes through in idline in initpipeline plugin
 echo "...and a hello world from your jenkins controller"
 
-## the original java code sequence was...
-
-
-
-### getEnvVars() 
-#   retrieved env vars from /etc/sysconfig/jenkins
-
+### get env vars
 # quick and dirty, get the values
 source /etc/sysconfig/jenkins
 
-
-
-### checkDebug() to set or unset debug flag through code, this stayed in plugin java
-
-
-
-### getProjectAndRepo() 
-#   isolate from NOTIFYURL the project and repo
+###   isolate from NOTIFYURL the project and repo
 
 # NOTIFYURL looks something like 
 # git@bitbucket.org:xosdigital/initpipeline_jenkinsplugin.git
@@ -83,13 +70,7 @@ echo "**PROJECT: ${PROJECT}"
 echo "**CONFIGURL:  ${CONFIGURL}"
 
 
-### checkCicdRepo() - this was a check for GHE MultiBranch Org setup
-#   if the ghe-config (or something like that) repo existed, this was a multibranch construct and got treated
-#   differently
-
-
-
-### latestCommitHash()
+### last GITHASH
 #   because of the unreliability of the git plugin in determining latest commit
 #   without extensive build history, this isolated the latest commithash to the repo passed
 
@@ -128,7 +109,7 @@ echo "${GITHASH}"  # return GITHASH
 
 
 
-### retestForJob () 
+### recheck for the job...
 #   sometimes the git plugin would pass a url through, but miss that the job for our purposes already 
 #   exists, so this dd a direct simple check to see if the directory for the job exists
 #   called doCreateJob() if the job is truly found not to exist, and that continues execution
@@ -157,13 +138,7 @@ if [[ -d "${TARGET}" ]]; then
 fi
 
 
-
-### doCreateJob() 
-#   calls editPipelineConfig(), callAndCreatePipeline(), which cascades execution through
-#   not needed here... 
-
-
-### editPipelineConfig() 
+### EDIT for url, projecturl 
 #   takes the template pipeline config.xml and edits it, crafting and placing the 
 #   <url> and <projectUrl> tages to the correct repo url from urlPassed
 
@@ -198,7 +173,7 @@ done < ${WORKSDIR}/config.xml
 
 
 
-### callAndCreatePipeline() 
+### CREATE the pipeline job in Jenkins...
 #   calls procureJenkinsCrumb() and pullUserApi(), which gather credentials needed
 #   and then makes a POST call to "createItem?name=" passing the edited config.xml for a pipeline job and creating the job
 #   then calls restrictConfigXml() which edits the config to restrict it to building the latest commithash
@@ -236,23 +211,7 @@ fi
 
 
 
-### procureJenkinsCrumb() 
-#   gets the crumb string for use in calling the createItem and build endpoints in jenkins
-#   API=`cat /home/centos/.ssh/devopsUserApi`
-#   CRUMB=$(curl -s "http://devops:${API}@localhost:8080/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,\":\",//crumb)")
-#   echo $CRUMB
-#   as above...
-
-
-
-### pullUserApi() 
-#   grabs the devopsUserApi file content and presents that to jenkins
-#   this MAY have changed in the same way the reload_config.sh script had to adjust as jenkins made under-the-hood
-#   security model changes, so this may also need to adjust to that
-#   implemented above...
-
-
-### restrictConfigXml() 
+### EDIT config.xml, restricting build to the last GITHASH found...
 #   edits the config.xml for the new pipeline job, injecting the latest commithash as the target to build, 
 #   then calls buildPipeline()
 
@@ -292,7 +251,7 @@ fi
 
 
 
-### buildPipeline() 
+### BUILD the restricted version...
 #   sends /build to the pipeline - once the job registers as building, then calls removeRestrictedConfigXml()
 
 ESPONSE=`curl -s -X POST "http://devops:${API}@localhost:8080/job/${REPO}_${PROJECT}/build" --write-out "%{http_code}\n" -H "${CRUMB}" -H "Content-Type:text/xml"`
@@ -306,11 +265,9 @@ fi
 
 
 
-### removeRestrictedConfigXml() 
-#   sleeps 10 seconds, then loops through until it sees the commit hash in the response from the jenkins server, 
-#   once it sees the build present and running, edit the commithash out of the config.xml and return to "**"
+### EDIT config.xml, removing restrict and returning "**"
 
-# the first step is to ensure this is actually building BEFORE frestting the restriction...
+# the first step is to ensure this is actually building BEFORE resetting the restriction...
 # loop through checking build status
 
 # job/project/lastBuild/api/xml?depth=1
