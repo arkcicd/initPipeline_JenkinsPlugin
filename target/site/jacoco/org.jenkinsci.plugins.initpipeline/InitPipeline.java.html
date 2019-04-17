@@ -104,7 +104,7 @@ import java.io.IOException;
 
 <span class="fc" id="L105">    private String lastURL = &quot;&quot;;        // Required query parameter</span>
 
-<span class="fc" id="L107">    private static String urlPassed = &quot;&quot;;</span>
+<span class="fc" id="L107">    private static String notifyUrl = &quot;&quot;;</span>
         // clearly capture and use url string sent to class outside of
         // doNotifyCommit method
 
@@ -164,7 +164,7 @@ import java.io.IOException;
                                        @QueryParameter(required=false) String branches,
                                        @QueryParameter(required=false) String sha1) throws ServletException, IOException {
 <span class="nc" id="L166">        lastURL = url;</span>
-<span class="nc" id="L167">        urlPassed = url; // isolate url string passed</span>
+<span class="nc" id="L167">        notifyUrl = url; // isolate url string passed</span>
 <span class="nc" id="L168">        lastBranches = branches;</span>
 <span class="nc" id="L169">        lastSHA1 = sha1;</span>
 <span class="nc" id="L170">        lastBuildParameters = null;</span>
@@ -397,7 +397,7 @@ import java.io.IOException;
 
 <span class="nc bnc" id="L398" title="All 2 branches missed.">            if (!scmFound) {</span>
 <span class="nc" id="L399">                result.add(new MessageResponseContributor(&quot;initPipeline:: repository: &quot; +  uri.toString() + &quot; - START&quot;));</span>
-<span class="nc" id="L400">                urlPassed = uri.toString();</span>
+<span class="nc" id="L400">                notifyUrl = uri.toString();</span>
                 // call prelims
 <span class="nc" id="L402">                LOGGER.log(Level.INFO, &quot;initPipeline:: onNotifyCommit !scmFound: - START init Pipeline...&quot;);</span>
 
@@ -419,7 +419,7 @@ import java.io.IOException;
 
 <span class="nc bnc" id="L420" title="All 2 branches missed.">            } else if (!urlFound) {</span>
 <span class="nc" id="L421">                result.add(new MessageResponseContributor(&quot;initPipeline:: repository: &quot; +  uri.toString() + &quot; - START&quot;));</span>
-<span class="nc" id="L422">                urlPassed = uri.toString();</span>
+<span class="nc" id="L422">                notifyUrl = uri.toString();</span>
                 // call prelims
 <span class="nc" id="L424">                LOGGER.log(Level.INFO, &quot;initPipeline:: onNotifyCommit !urlFound:  - START Cicd Discover...&quot;);</span>
 
@@ -597,8 +597,8 @@ import java.io.IOException;
         
         // Using jenkinsHome from /etc/sysconfig/jenkins, explicitly exporting JENKINS_HOME
 <span class="nc" id="L599">        String jenkinsHome = System.getenv(&quot;JENKINS_HOME&quot;);</span>
-        // arg is urlPassed, call is to initpipeline which does the heavy lifting
-<span class="nc" id="L601">        ProcessBuilder newpipe = new ProcessBuilder(jenkinsHome + &quot;/scripts/&quot; + &quot;initpipeline&quot;, urlPassed);</span>
+        // arg is notifyUrl, call is to initpipeline which does the heavy lifting
+<span class="nc" id="L601">        ProcessBuilder newpipe = new ProcessBuilder(jenkinsHome + &quot;/scripts/&quot; + &quot;initpipeline&quot;, notifyUrl);</span>
         Process process;
         InputStream is;
         try {

@@ -7,10 +7,10 @@ import java.util.*;
 public class InjectedTest extends junit.framework.TestCase {
   public static junit.framework.Test suite() throws Exception {
     Map parameters = new HashMap();
-    parameters.put("basedir","/Users/DougMunsinger/Google Drive/arkCICD/arkCICD_GM/InitPipeline_Jenkins_Plugin");
+    parameters.put("basedir","/Users/DougMunsinger/Google Drive/Catapult/devops/initpipeline_jenkinsplugin");
     parameters.put("artifactId","initpipeline");
-    parameters.put("outputDirectory","/Users/DougMunsinger/Google Drive/arkCICD/arkCICD_GM/InitPipeline_Jenkins_Plugin/target/classes");
-    parameters.put("testOutputDirectory","/Users/DougMunsinger/Google Drive/arkCICD/arkCICD_GM/InitPipeline_Jenkins_Plugin/target/test-classes");
+    parameters.put("outputDirectory","/Users/DougMunsinger/Google Drive/Catapult/devops/initpipeline_jenkinsplugin/target/classes");
+    parameters.put("testOutputDirectory","/Users/DougMunsinger/Google Drive/Catapult/devops/initpipeline_jenkinsplugin/target/test-classes");
     parameters.put("requirePI","true");
     return new org.jvnet.hudson.test.PluginAutomaticTestBuilder().build(parameters);
   }

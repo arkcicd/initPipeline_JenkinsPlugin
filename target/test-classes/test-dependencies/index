@@ -1,10 +1,10 @@
-git
-scm-api
 ssh-credentials
-junit
-icon-shim
+script-security
 git-client
 matrix-project
-script-security
+icon-shim
+junit
 credentials
+git
+scm-api
 mailer

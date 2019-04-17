@@ -104,7 +104,7 @@ public class InitPipeline extends hudson.plugins.git.GitStatus.Listener {
 
     private String lastURL = "";        // Required query parameter
 
-    private static String urlPassed = "";
+    private static String notifyUrl = "";
         // clearly capture and use url string sent to class outside of
         // doNotifyCommit method
 
@@ -164,7 +164,7 @@ public class InitPipeline extends hudson.plugins.git.GitStatus.Listener {
                                        @QueryParameter(required=false) String branches,
                                        @QueryParameter(required=false) String sha1) throws ServletException, IOException {
         lastURL = url;
-        urlPassed = url; // isolate url string passed
+        notifyUrl = url; // isolate url string passed
         lastBranches = branches;
         lastSHA1 = sha1;
         lastBuildParameters = null;
@@ -397,7 +397,7 @@ public class InitPipeline extends hudson.plugins.git.GitStatus.Listener {
 
             if (!scmFound) {
                 result.add(new MessageResponseContributor("initPipeline:: repository: " +  uri.toString() + " - START"));
-                urlPassed = uri.toString();
+                notifyUrl = uri.toString();
                 // call prelims
                 LOGGER.log(Level.INFO, "initPipeline:: onNotifyCommit !scmFound: - START init Pipeline...");
 
@@ -419,7 +419,7 @@ public class InitPipeline extends hudson.plugins.git.GitStatus.Listener {
 
             } else if (!urlFound) {
                 result.add(new MessageResponseContributor("initPipeline:: repository: " +  uri.toString() + " - START"));
-                urlPassed = uri.toString();
+                notifyUrl = uri.toString();
                 // call prelims
                 LOGGER.log(Level.INFO, "initPipeline:: onNotifyCommit !urlFound:  - START Cicd Discover...");
 
@@ -597,8 +597,8 @@ public class InitPipeline extends hudson.plugins.git.GitStatus.Listener {
         
         // Using jenkinsHome from /etc/sysconfig/jenkins, explicitly exporting JENKINS_HOME
         String jenkinsHome = System.getenv("JENKINS_HOME");
-        // arg is urlPassed, call is to initpipeline which does the heavy lifting
-        ProcessBuilder newpipe = new ProcessBuilder(jenkinsHome + "/scripts/" + "initpipeline", urlPassed);
+        // arg is notifyUrl, call is to initpipeline which does the heavy lifting
+        ProcessBuilder newpipe = new ProcessBuilder(jenkinsHome + "/scripts/" + "initpipeline", notifyUrl);
         Process process;
         InputStream is;
         try {

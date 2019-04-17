@@ -59,7 +59,7 @@
         </hudson.plugins.git.extensions.impl.SubmoduleOption>
       </extensions>
     </scm>
-    <scriptPath>cicd/pipeline/Jenkinsfile</scriptPath>
+    <scriptPath>cicd/jenkins/Jenkinsfile</scriptPath>
     <lightweight>false</lightweight>
   </definition>
   <triggers/>

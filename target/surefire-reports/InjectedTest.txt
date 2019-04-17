@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: InjectedTest
 -------------------------------------------------------------------------------
-Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 24.557 sec - in InjectedTest
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 25.939 sec - in InjectedTest
