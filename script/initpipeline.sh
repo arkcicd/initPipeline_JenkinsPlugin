@@ -312,11 +312,46 @@ fi
 
 # the first step is to ensure this is actually building BEFORE frestting the restriction...
 # loop through checking build status
-CHECKBUILD="Null"
-while [[ ${CHECKBUILD} == "Null" ]]; do
-    ESPONSE=`curl -s -X POST "http://devops:${API}@localhost:8080/job/${REPO}_${PROJECT}/1/api/xml" -H "${CRUMB}" -H "Content-Type:text/xml"`
-    echo "${RESPONSE}"
-    sleep 5
-done
 
-### complete
+# job/project/lastBuild/api/xml?depth=1
+
+# curl -s "http://devops:${API}@localhost:8080/job/devops_base_ami_centos_7_xosdigital/lastBuild/api/xml?depth=1" -H "Jenkins-Crumb:c06606ce60a0fb746825e328f15f7d41" -H "Content-Type:text/xml" | grep '<building>true</building>'
+RESULT=1
+while [[ $RESULT == 1 ]]
+do
+    curl -s "http://devops:${API}@localhost:8080/job/${REPO}_${PROJECT}/lastBuild/api/xml" -H "${CRUMB}" -H "Content-Type:text/xml" | grep '<building>true</building>'
+    if [[ $? == 0 ]]; then
+        RESULT=0
+        echo "build call succeeded: result is $?..."
+    else
+        # leave RESULT = 1
+        echo "build setting up: result is $?..."
+    fi
+    sleep 2
+done
+echo "job $REPO_$PROJECT is building..."
+
+# once that loop completes, the build is in progress and we can go unrestrict the config.xml...
+# and read through, changing the Branch Specifier xml tag...
+TMPTHREE="${WORKSDIR}/tmp3_config.xml"
+while IFS= read -r line; do
+    if [[ $line =~ '<name>' ]]; then
+        echo "found Branch Specifier..."
+        echo "${WIDEOPEN}" >> $TMPTHREE
+    else
+        echo "$line" >> $TMPTHREE
+    fi
+done < $TMPTOO
+
+# POST this as config.xml update...
+RESPONSE=`curl -s -X POST "http://devops:${API}@localhost:8080/job/${REPO}_${PROJECT}/config.xml" --write-out "%{http_code}\n"  --data-binary @${TMPTHREE} -H "${CRUMB}" -H "Content-Type:text/xml"`
+if [[ $RESPONSE == 200 ]]; then
+    echo "WIDEOPEN pipeline job ${REPO}_${PROJECT} succeeded..."
+else
+    echo "FAILED:: WIDEOPEN failed for ${REPO}_${PROJECT} - Exiting..."
+    exit 1
+fi
+
+
+echo "initpipeline COMPLETED..."
+# complete
