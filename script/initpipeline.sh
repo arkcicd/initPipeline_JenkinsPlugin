@@ -1,5 +1,8 @@
 #! /bin/bash
 
+## this software is licensed under the MIT open source license
+## see https://opensource.org/licenses/MIT
+
 # this is bash for now, translate into golang once this works...
 
 # this takes NOTIFYURL as an arg from initPipeline_JenkinsPlugin
@@ -21,21 +24,21 @@ source /etc/sysconfig/jenkins
 
 ###   isolate from NOTIFYURL the project and repo
 
-# NOTIFYURL looks something like 
+# NOTIFYURL looks something like
 # git@bitbucket.org:xosdigital/initpipeline_jenkinsplugin.git
 # OR
 # ssh://git@bitbucket.org/xosdigital/initpipeline_jenkinsplugin.git
-# OR 
-# https://bitbucket.org/xosdigital/initpipeline_jenkinsplugin.git 
+# OR
+# https://bitbucket.org/xosdigital/initpipeline_jenkinsplugin.git
 
 # set PROJECT, REPO
 if [[ ${NOTIFYURL} =~ 'ssh://' ]]; then
     echo "found ssh:// construct..."
     # ssh://git@bitbucket.org/xosdigital/initpipeline_jenkinsplugin.git
     # separate on ":", get ssh + everything else
-    # then drop that result through "/" and print... $2 for PROJECT, $3 for REPO 
+    # then drop that result through "/" and print... $2 for PROJECT, $3 for REPO
     PROJECT=`echo ${NOTIFYURL} | awk -F: '{ print $2 }' | awk -F'/' '{ print $2 }'`
-    REPOFULL=`echo $NOTIFYURL | awk -F: '{ print $2 }' | awk -F'/' '{ print $3 }'` 
+    REPOFULL=`echo $NOTIFYURL | awk -F: '{ print $2 }' | awk -F'/' '{ print $3 }'`
     CONFIGURL="${NOTIFYURL}"  # set configurl to the string passed...
 elif [[ ${NOTIFYURL} =~ 'http://' ]]; then
     echo "found http(s) construct..."
@@ -100,7 +103,7 @@ git fetch --tags --progress ${NOTIFYURL} +refs/heads/*:refs/remotes/origin/*
 echo "fetch completed, config remote..."
 git config remote.origin.url ${NOTIFYURL}
 echo "let's see what we have..."
-git remote -v 
+git remote -v
 echo "go find the latest commit..."
 GITHASH=`git log --all -n 1 | egrep ^commit | awk '{ print $2 }'`
 echo "${GITHASH}"  # return GITHASH
@@ -110,7 +113,7 @@ echo "${GITHASH}"  # return GITHASH
 
 
 ### recheck for the job...
-#   sometimes the git plugin would pass a url through, but miss that the job for our purposes already 
+#   sometimes the git plugin would pass a url through, but miss that the job for our purposes already
 #   exists, so this dd a direct simple check to see if the directory for the job exists
 #   called doCreateJob() if the job is truly found not to exist, and that continues execution
 
@@ -125,7 +128,7 @@ if [[ -f '/etc/ansible/devops/jenkins_vars.yml' ]]; then
 else
     # if no file, assume jenkins_home = /var/lib/jenkins
     echo "/etc/ansible/devops/jenkins_vars.yml not found..."
-    echo "setting JENKINS_HOME to /evar/lib/jenkins..."
+    echo "setting JENKINS_HOME to /var/lib/jenkins..."
     JENKINS_HOME='/var/lib/jenkins'
 fi
 
@@ -138,8 +141,8 @@ if [[ -d "${TARGET}" ]]; then
 fi
 
 
-### EDIT for url, projecturl 
-#   takes the template pipeline config.xml and edits it, crafting and placing the 
+### EDIT for url, projecturl
+#   takes the template pipeline config.xml and edits it, crafting and placing the
 #   <url> and <projectUrl> tages to the correct repo url from urlPassed
 
 # template is at $JENKINS_HOME/templates/config.xml.pipeline
@@ -149,18 +152,18 @@ cp ${JENKINS_HOME}/templates/config.xml.pipeline ${WORKSDIR}/config.xml
 echo "check config.xml..."
 ls -la ${WORKSDIR}
 # replace <url> and <projectUrl> strings
- 
+
 # sed and xmllint were way over complicated as well as not working so...
 TMPCONF="${WORKSDIR}/tmp_config.xml"
 rm -f $TMPCONF # remove if exists
 
 # add newline at end of config.xml
-# text processing demands the last line end in newline, and for some reason 
+# text processing demands the last line end in newline, and for some reason
 # without this added newline, the last line of the file gets dropped...
 echo "" >> ${WORKSDIR}/config.xml
 
 while IFS= read -r line; do
-    if [[ $line =~ '<url>' ]]; then 
+    if [[ $line =~ '<url>' ]]; then
         echo "found url..."
         echo "          <url>${CONFIGURL}</url>" >> $TMPCONF
     elif [[ $line =~ '<projectUrl>' ]]; then
@@ -168,7 +171,7 @@ while IFS= read -r line; do
         echo "      <projectUrl>${CONFIGURL}</projectUrl>" >> $TMPCONF
     else
         echo "$line" >> $TMPCONF
-    fi     
+    fi
 done < ${WORKSDIR}/config.xml
 
 
@@ -212,7 +215,7 @@ fi
 
 
 ### EDIT config.xml, restricting build to the last GITHASH found...
-#   edits the config.xml for the new pipeline job, injecting the latest commithash as the target to build, 
+#   edits the config.xml for the new pipeline job, injecting the latest commithash as the target to build,
 #   then calls buildPipeline()
 
 # so here we have the job created, but it would build incorrectly - jenkins initial build call would look
@@ -274,17 +277,23 @@ fi
 
 # curl -s "http://devops:${API}@localhost:8080/job/devops_base_ami_centos_7_xosdigital/lastBuild/api/xml?depth=1" -H "Jenkins-Crumb:c06606ce60a0fb746825e328f15f7d41" -H "Content-Type:text/xml" | grep '<building>true</building>'
 RESULT=1
+COUNT=0
 while [[ $RESULT == 1 ]]
 do
+    ((++COUNT))
+    echo "$COUNT"
     curl -s "http://devops:${API}@localhost:8080/job/${REPO}_${PROJECT}/lastBuild/api/xml" -H "${CRUMB}" -H "Content-Type:text/xml" | grep '<building>true</building>'
     if [[ $? == 0 ]]; then
         RESULT=0
         echo "build call succeeded: result is $?..."
+    elif [[ $COUNT == 42 ]]; then
+        echo "reached recheck limit, exiting..."
+        exit 1
     else
         # leave RESULT = 1
         echo "build setting up: result is $?..."
     fi
-    sleep 2
+    sleep 4
 done
 echo "job $REPO_$PROJECT is building..."
 

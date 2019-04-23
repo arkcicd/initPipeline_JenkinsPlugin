@@ -1,0 +1,37 @@
+---
+
+# create initpipeline directory
+- name: initpipeline init | directory in /tmp...
+  file:
+    path: "{{ initpipeline_tmp_dir }}"
+    state: directory
+    owner: "{{ jenkins_user }}"
+    group: "{{ jenkins_group }}"
+    mode: 0755
+
+# copy over the plugin
+- name: initpipeline init | copy over plugin
+  copy:
+    src: target/initpipeline.hpi
+    dest: "{{ initpipeline_tmp_dir }}/initpipeline.hpi"
+    owner: "{{ jenkins_user }}"
+    group: "{{ jenkins_group }}"
+    mode: 0644
+
+# copy over template
+- name: initpipeline init | copy template
+  copy:
+    src: pipeline_template/config.xml.pipeline
+    dest: "{{ initpipeline_tmp_dir }}/config.xml.pipeline"
+    owner: "{{ jenkins_user }}"
+    group: "{{ jenkins_group }}"
+    mode: 0644
+
+# copy over the script
+- name: initpipeline init | copy script
+  copy:
+    src: "script/{{ initpipeline_script }}"
+    dest: "{{ initpipeline_tmp_dir }}/{{ initpipeline_script }}"
+    owner: "{{ jenkins_user }}"
+    group: "{{ jenkins_group }}"
+    mode: 0755

@@ -404,7 +404,7 @@ import java.io.IOException;
                 /**
                  * ...am I in debug mode or no?
                  */
-<span class="nc" id="L407">                checkDebug();  // if /var/lib/jenkins/plugins/.cicd-discover.debug exists, enable debug</span>
+<span class="nc" id="L407">                checkDebug();  // if /var/lib/jenkins/plugins/.initpipeline.debug exists, enable debug</span>
                 // sets global haveEnvVars if completely successful from getEnvVars()
 <span class="nc bnc" id="L409" title="All 2 branches missed.">                if (debugEnabled == &quot;true&quot;) {</span>
 <span class="nc" id="L410">                    result.add(new MessageResponseContributor(&quot;initPipeline:: &quot; +  uri.toString() + &quot;: debug verbose logging enabled to Jenkins controller&quot;));</span>
@@ -638,7 +638,7 @@ import java.io.IOException;
     private void checkDebug() {
         // set up file name
 <span class="nc" id="L640">        String jen_home = System.getenv(&quot;JENKINS_HOME&quot;);</span>
-<span class="nc" id="L641">        String debugFile = jen_home + &quot;/plugins/.cicd-discover.debug&quot;;</span>
+<span class="nc" id="L641">        String debugFile = jen_home + &quot;/plugins/.initpipeline.debug&quot;;</span>
         // verify the file
 <span class="nc" id="L643">        File f = new File(debugFile);</span>
 <span class="nc bnc" id="L644" title="All 2 branches missed.">        if (f.exists()) {</span>

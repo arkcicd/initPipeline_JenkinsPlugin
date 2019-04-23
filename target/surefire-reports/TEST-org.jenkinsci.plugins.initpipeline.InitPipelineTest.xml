@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="org.jenkinsci.plugins.initpipeline.InitPipelineTest" time="0.025" tests="14" errors="0" skipped="0" failures="0">
+<testsuite name="org.jenkinsci.plugins.initpipeline.InitPipelineTest" time="0.02" tests="14" errors="0" skipped="0" failures="0">
   <properties>
     <property name="idea.version" value="2016.1.4"/>
     <property name="java.runtime.name" value="Java(TM) SE Runtime Environment"/>
@@ -67,11 +67,11 @@
   <testcase name="testGetIconFileName" classname="org.jenkinsci.plugins.initpipeline.InitPipelineTest" time="0"/>
   <testcase name="testEditConfigXml" classname="org.jenkinsci.plugins.initpipeline.InitPipelineTest" time="0"/>
   <testcase name="testGetSearchUrl" classname="org.jenkinsci.plugins.initpipeline.InitPipelineTest" time="0"/>
-  <testcase name="testToString" classname="org.jenkinsci.plugins.initpipeline.InitPipelineTest" time="0.001"/>
+  <testcase name="testToString" classname="org.jenkinsci.plugins.initpipeline.InitPipelineTest" time="0"/>
   <testcase name="testEnableNewJob" classname="org.jenkinsci.plugins.initpipeline.InitPipelineTest" time="0"/>
   <testcase name="testCallAndCreateJob" classname="org.jenkinsci.plugins.initpipeline.InitPipelineTest" time="0"/>
   <testcase name="testGetDisplayName" classname="org.jenkinsci.plugins.initpipeline.InitPipelineTest" time="0"/>
-  <testcase name="testGetUrlName" classname="org.jenkinsci.plugins.initpipeline.InitPipelineTest" time="0.005"/>
+  <testcase name="testGetUrlName" classname="org.jenkinsci.plugins.initpipeline.InitPipelineTest" time="0.001"/>
   <testcase name="testResendNotifyCommit" classname="org.jenkinsci.plugins.initpipeline.InitPipelineTest" time="0"/>
   <testcase name="testGetProjectAndRepo" classname="org.jenkinsci.plugins.initpipeline.InitPipelineTest" time="0"/>
   <testcase name="testOnNotifyCommit1" classname="org.jenkinsci.plugins.initpipeline.InitPipelineTest" time="0"/>

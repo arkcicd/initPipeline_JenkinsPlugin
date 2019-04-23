@@ -1,29 +1,29 @@
 Picking up existing exploded jenkins.war at /Users/DougMunsinger/Google Drive/Catapult/devops/initpipeline_jenkinsplugin/target/jenkins-for-test
-Apr 16, 2019 12:31:55 PM org.mortbay.log.Slf4jLog info
+Apr 18, 2019 11:22:39 AM org.mortbay.log.Slf4jLog info
 INFO: Logging to org.slf4j.impl.JDK14LoggerAdapter(org.mortbay.log) via org.mortbay.log.Slf4jLog
-Apr 16, 2019 12:31:55 PM org.mortbay.log.Slf4jLog info
+Apr 18, 2019 11:22:40 AM org.mortbay.log.Slf4jLog info
 INFO: jetty-6.1.26
-Apr 16, 2019 12:31:55 PM org.mortbay.log.Slf4jLog info
+Apr 18, 2019 11:22:40 AM org.mortbay.log.Slf4jLog info
 INFO: NO JSP Support for , did not find org.apache.jasper.servlet.JspServlet
-Apr 16, 2019 12:31:55 PM org.mortbay.log.Slf4jLog info
-INFO: Started SocketConnector@0.0.0.0:53356
-Apr 16, 2019 12:31:55 PM jenkins.InitReactorRunner$1 onAttained
+Apr 18, 2019 11:22:40 AM org.mortbay.log.Slf4jLog info
+INFO: Started SocketConnector@0.0.0.0:49168
+Apr 18, 2019 11:22:40 AM jenkins.InitReactorRunner$1 onAttained
 INFO: Started initialization
-Apr 16, 2019 12:32:14 PM jenkins.InitReactorRunner$1 onAttained
+Apr 18, 2019 11:22:58 AM jenkins.InitReactorRunner$1 onAttained
 INFO: Listed all plugins
-Apr 16, 2019 12:32:14 PM jenkins.InitReactorRunner$1 onAttained
+Apr 18, 2019 11:22:58 AM jenkins.InitReactorRunner$1 onAttained
 INFO: Prepared all plugins
-Apr 16, 2019 12:32:14 PM jenkins.InitReactorRunner$1 onAttained
+Apr 18, 2019 11:22:58 AM jenkins.InitReactorRunner$1 onAttained
 INFO: Started all plugins
-Apr 16, 2019 12:32:14 PM jenkins.InitReactorRunner$1 onAttained
+Apr 18, 2019 11:22:58 AM jenkins.InitReactorRunner$1 onAttained
 INFO: Augmented all extensions
-Apr 16, 2019 12:32:17 PM jenkins.InitReactorRunner$1 onAttained
+Apr 18, 2019 11:23:01 AM jenkins.InitReactorRunner$1 onAttained
 INFO: Loaded all jobs
-Apr 16, 2019 12:32:17 PM org.jenkinsci.main.modules.sshd.SSHD start
-INFO: Started SSHD at port 53358
-Apr 16, 2019 12:32:17 PM jenkins.InitReactorRunner$1 onAttained
+Apr 18, 2019 11:23:01 AM org.jenkinsci.main.modules.sshd.SSHD start
+INFO: Started SSHD at port 49186
+Apr 18, 2019 11:23:01 AM jenkins.InitReactorRunner$1 onAttained
 INFO: Completed initialization
-Apr 16, 2019 12:32:17 PM hudson.UDPBroadcastThread run
+Apr 18, 2019 11:23:02 AM hudson.UDPBroadcastThread run
 WARNING: UDP handling problem
 java.net.SocketException: Can't assign requested address
 	at java.net.PlainDatagramSocketImpl.join(Native Method)
@@ -31,13 +31,13 @@ java.net.SocketException: Can't assign requested address
 	at java.net.MulticastSocket.joinGroup(MulticastSocket.java:323)
 	at hudson.UDPBroadcastThread.run(UDPBroadcastThread.java:77)
 
-Apr 16, 2019 12:32:17 PM org.mortbay.log.Slf4jLog info
+Apr 18, 2019 11:23:02 AM org.mortbay.log.Slf4jLog info
 INFO: jetty-6.1.26
-Apr 16, 2019 12:32:17 PM org.mortbay.log.Slf4jLog info
-INFO: Started SocketConnector@0.0.0.0:53360
-Apr 16, 2019 12:32:19 PM org.mortbay.log.Slf4jLog info
-INFO: Stopped SocketConnector@0.0.0.0:53356
-Apr 16, 2019 12:32:19 PM hudson.TcpSlaveAgentListener shutdown
+Apr 18, 2019 11:23:02 AM org.mortbay.log.Slf4jLog info
+INFO: Started SocketConnector@0.0.0.0:49188
+Apr 18, 2019 11:23:03 AM org.mortbay.log.Slf4jLog info
+INFO: Stopped SocketConnector@0.0.0.0:49168
+Apr 18, 2019 11:23:03 AM hudson.TcpSlaveAgentListener shutdown
 WARNING: Failed to close down TCP port
 java.io.IOException: No such file or directory
 	at sun.nio.ch.NativeThread.signal(Native Method)

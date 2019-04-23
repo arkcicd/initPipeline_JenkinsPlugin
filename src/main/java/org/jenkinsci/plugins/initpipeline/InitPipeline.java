@@ -10,6 +10,11 @@ package org.jenkinsci.plugins.initpipeline;
  * configure and instantiate a pipeline build and then kick it off for a first run
  */
 
+/**
+ * this software is licensed under the MIT open source license
+ * see https://opensource.org/licenses/MIT
+ */
+
 import hudson.Extension;
 import hudson.Util;
 import hudson.model.*;
@@ -404,7 +409,7 @@ public class InitPipeline extends hudson.plugins.git.GitStatus.Listener {
                 /**
                  * ...am I in debug mode or no?
                  */
-                checkDebug();  // if /var/lib/jenkins/plugins/.cicd-discover.debug exists, enable debug
+                checkDebug();  // if /var/lib/jenkins/plugins/.initpipeline.debug exists, enable debug
                 // sets global haveEnvVars if completely successful from getEnvVars()
                 if (debugEnabled == "true") {
                     result.add(new MessageResponseContributor("initPipeline:: " +  uri.toString() + ": debug verbose logging enabled to Jenkins controller"));
@@ -638,7 +643,7 @@ public class InitPipeline extends hudson.plugins.git.GitStatus.Listener {
     private void checkDebug() {
         // set up file name
         String jen_home = System.getenv("JENKINS_HOME");
-        String debugFile = jen_home + "/plugins/.cicd-discover.debug";
+        String debugFile = jen_home + "/plugins/.initpipeline.debug";
         // verify the file
         File f = new File(debugFile);
         if (f.exists()) {

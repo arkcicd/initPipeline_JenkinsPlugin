@@ -1,5 +1,11 @@
 # Init Pipeline Jenkins Plugin
 
+## License
+
+This software is licensed under the MIT open source license
+
+see https://opensource.org/licenses/MIT
+
 ## Architecture
 
 This plugin was derived from the Jenkins Git Plugin, specifically the GitStatus.java file.

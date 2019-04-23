@@ -1,0 +1,12 @@
+---
+
+## this MUST be synchronized with the jenkins_2lts_controller plays
+## as this plugin is copied into place AFTER jenkins is installed
+## by that job...
+initpipeline_tmp_dir: "/tmp/initpipeline_jenkinsplugin"
+initpipeline_script: "initpipeline.sh"
+
+## these also have to align with the jenkins install...
+jenkins_home: "/var/lib/jenkins"
+jenkins_user: "centos"
+jenkins_group: "centos"

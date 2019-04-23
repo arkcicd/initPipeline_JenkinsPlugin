@@ -11,13 +11,13 @@ Specification-Title: Requires the Git Plugin.
      instantiate and build the pipeline.  The plugin only acts in the 
  case where the job doesn't already exist
 Implementation-Title: initpipeline
-Implementation-Version: 0.1.0.002
+Implementation-Version: 0.1.0.003
 Group-Id: org.jenkins-ci.plugins
 Short-Name: initpipeline
 Long-Name: Init Pipeline Jenkins Plugin
 Url: https://bitbucket.org/xosdigital/init_pipeline_jenkins_plugin/src
  /master/
-Plugin-Version: 0.1.0.002
+Plugin-Version: 0.1.0.003
 Hudson-Version: 1.625.3
 Jenkins-Version: 1.625.3
 Plugin-Dependencies: git:2.4.4
